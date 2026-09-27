@@ -6,8 +6,8 @@ A tiny Chrome / Edge extension for YouTube: tap the right arrow key to keep YouT
 
 - Hold a custom key to temporarily change YouTube playback speed.
 - Default key is the right arrow key.
-- Tap `Right Arrow` to keep YouTube's native seek-forward shortcut.
-- Hold `Right Arrow` to switch to `2x` playback speed.
+- Tap `Right Arrow` to seek forward by 5 seconds.
+- Hold `Right Arrow` to switch to `2x` playback speed without the initial seek.
 - Release the key to restore playback speed.
 - Configure the key, speed, and restore behavior from the extension popup.
 - Avoids search boxes, comment boxes, and other editable fields.
