@@ -5,14 +5,16 @@ const DEFAULT_SETTINGS = {
   restoreMode: "normal"
 };
 
-const NATIVE_SHORTCUT_KEY_CODES = new Set([
+const DEFERRED_SHORTCUT_KEY_CODES = new Set([
   "ArrowLeft",
   "ArrowRight",
   "ArrowUp",
   "ArrowDown"
 ]);
 
-const HOLD_DELAY_MS_FOR_NATIVE_SHORTCUTS = 180;
+const HOLD_DELAY_MS_FOR_DEFERRED_SHORTCUTS = 220;
+const SEEK_STEP_SECONDS = 5;
+const VOLUME_STEP = 0.05;
 
 let settings = { ...DEFAULT_SETTINGS };
 let isHolding = false;
@@ -66,11 +68,10 @@ function onKeyDown(event) {
     return;
   }
 
-  if (shouldPreserveNativeShortcut(event)) {
+  if (shouldDeferNativeShortcut(event)) {
+    swallow(event);
+
     if (isHolding) {
-      // Once hold-speed is active, block repeated arrow keydown events so YouTube
-      // does not keep seeking while the user is just holding for speed.
-      swallow(event);
       setPlaybackRate(activeVideo || video, settings.holdSpeed);
       return;
     }
@@ -88,11 +89,20 @@ function onKeyUp(event) {
     return;
   }
 
-  if (!shouldPreserveNativeShortcut(event)) {
+  if (shouldDeferNativeShortcut(event)) {
     swallow(event);
+    const video = pendingVideo || activeVideo || getBestVideo();
+    const wasWaitingForHold = cancelDelayedHold();
+
+    if (isHolding) {
+      restorePlaybackRate();
+    } else if (wasWaitingForHold) {
+      replayNativeShortcut(event.code, video);
+    }
+    return;
   }
 
-  cancelDelayedHold();
+  swallow(event);
   restorePlaybackRate();
 }
 
@@ -114,7 +124,7 @@ function startDelayedHold(video) {
     holdTimer = 0;
     activateHold(pendingVideo || getBestVideo());
     pendingVideo = null;
-  }, HOLD_DELAY_MS_FOR_NATIVE_SHORTCUTS);
+  }, HOLD_DELAY_MS_FOR_DEFERRED_SHORTCUTS);
 }
 
 function activateHold(video) {
@@ -130,20 +140,47 @@ function activateHold(video) {
 
 function cancelDelayedHold() {
   if (!holdTimer) {
-    return;
+    return false;
   }
 
   window.clearTimeout(holdTimer);
   holdTimer = 0;
   pendingVideo = null;
+  return true;
 }
 
 function matchesHoldKey(event) {
   return event.code === settings.holdKeyCode;
 }
 
-function shouldPreserveNativeShortcut(event) {
-  return NATIVE_SHORTCUT_KEY_CODES.has(event.code);
+function shouldDeferNativeShortcut(event) {
+  return DEFERRED_SHORTCUT_KEY_CODES.has(event.code);
+}
+
+function replayNativeShortcut(code, video) {
+  if (!video) {
+    return;
+  }
+
+  if (code === "ArrowRight") {
+    seekBy(video, SEEK_STEP_SECONDS);
+  } else if (code === "ArrowLeft") {
+    seekBy(video, -SEEK_STEP_SECONDS);
+  } else if (code === "ArrowUp") {
+    setVolume(video, video.volume + VOLUME_STEP);
+  } else if (code === "ArrowDown") {
+    setVolume(video, video.volume - VOLUME_STEP);
+  }
+}
+
+function seekBy(video, seconds) {
+  const duration = Number.isFinite(video.duration) ? video.duration : Infinity;
+  video.currentTime = clamp(video.currentTime + seconds, 0, duration);
+}
+
+function setVolume(video, volume) {
+  video.volume = clamp(volume, 0, 1);
+  video.muted = video.volume === 0;
 }
 
 function restorePlaybackRate() {
