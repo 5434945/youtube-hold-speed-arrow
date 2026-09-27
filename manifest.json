@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "YouTube Hold Speed Arrow",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Hold a custom key to temporarily change YouTube playback speed without breaking arrow-key seeking.",
   "permissions": ["storage"],
   "host_permissions": [
